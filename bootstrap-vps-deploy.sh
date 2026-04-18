@@ -182,7 +182,12 @@ EOF
   chmod 600 "$HOME/.config/web-hub/backup.env"
 
   CRON_LINE="30 17 * * * BACKUP_ROOT=$BACKUP_ROOT BACKUP_ENV_FILE=$HOME/.config/web-hub/backup.env $REPO_DIR/scripts/full-backup.sh >> $REPO_DIR/logs/full-backup.log 2>&1"
-  ( crontab -l 2>/dev/null | grep -v 'full-backup.sh' ; echo "$CRON_LINE" ) | crontab -
+  # Under set -euo pipefail, `grep -v` on empty stdin returns 1 and kills
+  # the whole pipeline. Capture existing crontab into a var first (|| true
+  # for the no-cron case), strip old entries, then rewrite.
+  existing_cron="$(crontab -l 2>/dev/null || true)"
+  filtered_cron="$(printf '%s\n' "$existing_cron" | grep -v 'full-backup.sh' || true)"
+  printf '%s\n%s\n' "$filtered_cron" "$CRON_LINE" | crontab -
   echo "[deploy] daily backup cron installed (UTC 17:30 = Beijing 01:30 next day)"
 fi
 
