@@ -75,9 +75,12 @@ apt-get install -y -qq \
   gnupg \
   >/dev/null
 
-# Docker via official one-liner (works on Ubuntu 18-24, Debian 10-12,
+# Docker via official one-liner. Canonical on Ubuntu 24.04 (our
+# validated target). In theory supports Ubuntu 18-24, Debian 10-12,
 # CentOS, RHEL — much more portable than apt-installing docker.io +
-# docker-compose-plugin which need Ubuntu 22.04+ universe)
+# docker-compose-v2 which needs Ubuntu 22.04+ universe. We don't
+# claim 22.04 is verified end-to-end until someone runs the Phase
+# 1.1 drill on it (see docs/PHASE-1-EXIT.md support matrix).
 if ! command -v docker >/dev/null 2>&1; then
   echo "[root] installing Docker via get.docker.com..."
   curl -fsSL https://get.docker.com | sh >/dev/null

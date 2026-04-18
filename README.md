@@ -17,7 +17,7 @@ files are auto-synced by `scripts/sync-bootstrap-public.sh` over there.
 
 ## One-liner usage
 
-### Phase 1 (run as root on a fresh Ubuntu 22.04 VPS)
+### Phase 1 (run as root on a fresh Ubuntu 24.04 LTS VPS — 22.04 best-effort)
 
 ```bash
 SSH_PUBKEY="ssh-ed25519 AAAA... your-pubkey" \
