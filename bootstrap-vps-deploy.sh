@@ -27,6 +27,14 @@ if [[ -f "$ENV_FILE" ]]; then
 fi
 
 # ── 2. prompt missing values from /dev/tty (works under bash <(curl)) ──
+have_tty() {
+  # /dev/tty exists as a device but open() fails with ENXIO under
+  # non-interactive ssh. Try to actually open it.
+  exec 3</dev/tty 2>/dev/null || return 1
+  exec 3<&-
+  return 0
+}
+
 prompt_required() {
   local name="$1"
   local desc="$2"
@@ -34,7 +42,7 @@ prompt_required() {
   # bash 5 + `set -u` rejects ${!name:-} when target is unset; use [[ -v ]]
   if [[ -v "$name" ]]; then current="${!name}"; fi
   if [[ -z "$current" ]]; then
-    if [[ -e /dev/tty ]]; then
+    if have_tty; then
       read -rp "$desc: " current </dev/tty || true
     fi
     [[ -n "$current" ]] || {
@@ -51,7 +59,7 @@ prompt_optional() {
   local default="${3:-}"
   local current=""
   if [[ -v "$name" ]]; then current="${!name}"; fi
-  if [[ -z "$current" ]] && [[ -e /dev/tty ]]; then
+  if [[ -z "$current" ]] && have_tty; then
     if [[ -n "$default" ]]; then
       read -rp "$desc [$default]: " current </dev/tty || true
       current="${current:-$default}"
