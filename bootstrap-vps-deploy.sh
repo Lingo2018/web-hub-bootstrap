@@ -28,7 +28,11 @@ fi
 
 # ── 2. prompt missing values from /dev/tty (works under bash <(curl)) ──
 prompt_required() {
-  local name="$1" desc="$2" current="${!name:-}"
+  local name="$1"
+  local desc="$2"
+  local current=""
+  # bash 5 + `set -u` rejects ${!name:-} when target is unset; use [[ -v ]]
+  if [[ -v "$name" ]]; then current="${!name}"; fi
   if [[ -z "$current" ]]; then
     if [[ -e /dev/tty ]]; then
       read -rp "$desc: " current </dev/tty || true
@@ -42,8 +46,11 @@ prompt_required() {
 }
 
 prompt_optional() {
-  local name="$1" desc="$2" default="${3:-}"
-  local current="${!name:-}"
+  local name="$1"
+  local desc="$2"
+  local default="${3:-}"
+  local current=""
+  if [[ -v "$name" ]]; then current="${!name}"; fi
   if [[ -z "$current" ]] && [[ -e /dev/tty ]]; then
     if [[ -n "$default" ]]; then
       read -rp "$desc [$default]: " current </dev/tty || true
