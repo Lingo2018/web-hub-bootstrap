@@ -96,7 +96,7 @@ prompt_optional SKIP_CADDY      "Skip Caddy reverse-proxy step? (true/false)" "f
 cat > "$ENV_FILE" <<EOF
 # Auto-saved by bootstrap-vps-deploy.sh — re-runs are silent.
 DOMAIN=$DOMAIN
-WEB_HUB_REPO=$WEB_HUB_REPO
+WEB_HUB_REPO=${WEB_HUB_REPO:-}
 WEB_HUB_PORT=$WEB_HUB_PORT
 DEPLOYMENT_YAML=${DEPLOYMENT_YAML:-}
 DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL:-}
