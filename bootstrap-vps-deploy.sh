@@ -20,11 +20,23 @@ ENV_FILE="${BOOTSTRAP_ENV_FILE:-$HOME/.bootstrap.env}"
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not installed. Run bootstrap-vps-root.sh first." >&2; exit 1; }
 command -v git >/dev/null 2>&1 || { echo "ERROR: git not installed." >&2; exit 1; }
 
-# ── 1. load existing env file (if any) ────────────────
+# ── 1. load existing env file (if any), but caller's env vars win ────
+# Snapshot anything passed in by the caller (e.g. ssh "DOMAIN=x ... bash"),
+# source the file (which would otherwise override those), then restore
+# the caller's values. Without this the saved file silently overrides
+# what the operator just typed on the command line.
+declare -A _PARENT_ENV
+for _v in DOMAIN WEB_HUB_REPO WEB_HUB_PORT DEPLOYMENT_YAML DISCORD_WEBHOOK_URL BACKUP_ROOT SKIP_CADDY; do
+  if [[ -n "${!_v:-}" ]]; then _PARENT_ENV[$_v]="${!_v}"; fi
+done
 if [[ -f "$ENV_FILE" ]]; then
   # shellcheck source=/dev/null
   . "$ENV_FILE"
 fi
+for _v in "${!_PARENT_ENV[@]}"; do
+  printf -v "$_v" '%s' "${_PARENT_ENV[$_v]}"
+done
+unset _PARENT_ENV _v
 
 # ── 2. prompt missing values from /dev/tty (works under bash <(curl)) ──
 have_tty() {
