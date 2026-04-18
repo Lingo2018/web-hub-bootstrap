@@ -73,7 +73,7 @@ prompt_optional() {
 
 echo "[deploy] gathering config (env var > $ENV_FILE > prompt)..."
 prompt_required DOMAIN          "Domain (e.g. hub.acme.com — must already DNS A-record to this VPS)"
-prompt_optional WEB_HUB_REPO    "Web Hub git repo URL"           "https://github.com/Lingo2018/web-hub.git"
+prompt_optional WEB_HUB_REPO    "Web Hub git repo URL (only needed if running this script standalone — operator-led deploy-to-vps.sh pre-uploads source)"
 prompt_optional WEB_HUB_PORT    "Web Hub local port"             "3800"
 prompt_optional DEPLOYMENT_YAML "Branding seed file path (in repo)"
 prompt_optional DISCORD_WEBHOOK_URL "Discord webhook for backup-failure alerts"
@@ -106,6 +106,29 @@ if [[ -d "$REPO_DIR/server" && -d "$REPO_DIR/scripts" ]]; then
     echo "[deploy] $REPO_DIR exists (uploaded by deploy-to-vps.sh, no .git); skipping pull"
   fi
 elif [[ ! -d "$REPO_DIR" ]]; then
+  if [[ -z "${WEB_HUB_REPO:-}" ]]; then
+    cat >&2 <<EOF
+[deploy] ERROR: $REPO_DIR is empty AND WEB_HUB_REPO is not set.
+
+This script needs source code to install. Two ways to get it there:
+
+  (recommended) Operator-led — from the operator's laptop:
+    cd ~/projects/web-hub
+    ./scripts/deploy-to-vps.sh root@<this-vps-ip> <domain>
+  This tar-uploads the source over ssh so this script skips clone.
+
+  (advanced) Manual clone — set WEB_HUB_REPO to a URL the VPS can read:
+    - SSH deploy-key URL: git@github.com:Lingo2018/web-hub.git
+      (requires the VPS's pubkey added under repo Settings → Deploy keys)
+    - PAT-embedded URL: https://x-access-token:<TOKEN>@github.com/Lingo2018/web-hub.git
+      (warning: token persists in ~/web-hub/.git/config in plain text)
+
+  NOTE: Lingo2018/web-hub-bootstrap is the public mirror of THIS script
+  only — it does NOT contain the full app source. You can't clone the
+  bootstrap repo and expect install.sh to find server/, vendor/, etc.
+EOF
+    exit 1
+  fi
   echo "[deploy] cloning $WEB_HUB_REPO into $REPO_DIR..."
   git clone "$WEB_HUB_REPO" "$REPO_DIR"
 fi
