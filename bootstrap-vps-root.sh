@@ -63,18 +63,35 @@ systemctl restart ssh
 echo "[root] SSH hardened (no password auth, root key-only)"
 
 # ── 4. apt deps ────────────────────────────────────────
-echo "[root] installing system deps (docker, caddy, git, curl, openssl, ufw)..."
+echo "[root] installing system deps (git, curl, openssl, ufw, ca-certs)..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq \
-  docker.io \
-  docker-compose-plugin \
   git \
   curl \
   openssl \
   ufw \
   ca-certificates \
+  gnupg \
   >/dev/null
+
+# Docker via official one-liner (works on Ubuntu 18-24, Debian 10-12,
+# CentOS, RHEL — much more portable than apt-installing docker.io +
+# docker-compose-plugin which need Ubuntu 22.04+ universe)
+if ! command -v docker >/dev/null 2>&1; then
+  echo "[root] installing Docker via get.docker.com..."
+  curl -fsSL https://get.docker.com | sh >/dev/null
+  echo "[root] installed Docker $(docker --version | awk '{print $3}' | tr -d ',')"
+else
+  echo "[root] docker already installed, skipping"
+fi
+
+# Verify compose v2 plugin is present (get.docker.com bundles it as
+# docker-compose-plugin since 2022; warn if missing)
+if ! docker compose version >/dev/null 2>&1; then
+  echo "[root] WARN: 'docker compose' not available — trying explicit plugin install"
+  apt-get install -y -qq docker-compose-plugin >/dev/null 2>&1 || true
+fi
 
 # Caddy needs its own apt repo
 if ! command -v caddy >/dev/null 2>&1; then
