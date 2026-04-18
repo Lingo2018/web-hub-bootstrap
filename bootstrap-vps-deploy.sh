@@ -28,11 +28,10 @@ fi
 
 # ── 2. prompt missing values from /dev/tty (works under bash <(curl)) ──
 have_tty() {
-  # /dev/tty exists as a device but open() fails with ENXIO under
-  # non-interactive ssh. Try to actually open it.
-  exec 3</dev/tty 2>/dev/null || return 1
-  exec 3<&-
-  return 0
+  # `[[ -t 0 ]]` is the canonical "is stdin a terminal" check; works
+  # cleanly under `set -euo pipefail` without leaking redirection
+  # errors to stderr like the older `exec 3</dev/tty` probe did.
+  [[ -t 0 ]]
 }
 
 prompt_required() {
@@ -95,16 +94,20 @@ EOF
 chmod 600 "$ENV_FILE"
 echo "[deploy] saved config to $ENV_FILE"
 
-# ── 4. clone repo ────────────────────────────────────
+# ── 4. obtain repo (clone if missing, pull if .git present, skip if pre-uploaded) ──
 REPO_DIR="$HOME/web-hub"
-if [[ ! -d "$REPO_DIR" ]]; then
+if [[ -d "$REPO_DIR/server" && -d "$REPO_DIR/scripts" ]]; then
+  if [[ -d "$REPO_DIR/.git" ]]; then
+    echo "[deploy] $REPO_DIR exists with .git, pulling latest..."
+    git -C "$REPO_DIR" fetch --all --tags 2>/dev/null || true
+    git -C "$REPO_DIR" pull --ff-only origin master 2>/dev/null \
+      || echo "[deploy] WARN: pull failed (private repo, no auth, or on a tag); continuing"
+  else
+    echo "[deploy] $REPO_DIR exists (uploaded by deploy-to-vps.sh, no .git); skipping pull"
+  fi
+elif [[ ! -d "$REPO_DIR" ]]; then
   echo "[deploy] cloning $WEB_HUB_REPO into $REPO_DIR..."
   git clone "$WEB_HUB_REPO" "$REPO_DIR"
-else
-  echo "[deploy] $REPO_DIR exists, pulling latest..."
-  git -C "$REPO_DIR" fetch --all --tags
-  git -C "$REPO_DIR" pull --ff-only origin master 2>/dev/null \
-    || echo "[deploy] WARN: pull failed (probably on a tag/branch); continuing"
 fi
 cd "$REPO_DIR"
 
@@ -163,6 +166,12 @@ echo "   Login:      admin / admin123"
 echo "   ⚠ CHANGE PASSWORD NOW: /settings → 修改密码"
 echo ""
 echo "   Logs:       cd $REPO_DIR && docker compose logs -f"
-echo "   Update:     cd $REPO_DIR && ./scripts/update.sh"
-echo "   Rollback:   cd $REPO_DIR && ./scripts/rollback.sh"
+if [[ -d "$REPO_DIR/.git" ]]; then
+  echo "   Update:     cd $REPO_DIR && ./scripts/update.sh"
+  echo "   Rollback:   cd $REPO_DIR && ./scripts/rollback.sh"
+else
+  echo "   Update:     re-run scripts/deploy-to-vps.sh from operator laptop"
+  echo "                (this VPS was provisioned via tar+ssh source upload, no .git here,"
+  echo "                 so the in-VPS update.sh / rollback.sh paths will fail)"
+fi
 echo "================================================================"
